@@ -14,6 +14,7 @@ import pandas as pd
 import gspread
 import smtplib
 import datetime
+import argparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from google.oauth2.service_account import Credentials
@@ -221,9 +222,18 @@ def generate_summary(data):
 
 def send_email_summary(summary, sheet_url):
     """Send email with summary of partial payments"""
-    if not EMAIL_SENDER or not EMAIL_PASSWORD:
-        logging.warning("Email sender or password not found in environment variables. Skipping email.")
-        return
+    logging.info("Attempting to send email summary...")
+    
+    # Check for email credentials
+    if not EMAIL_SENDER:
+        logging.error("EMAIL_SENDER not found in environment variables. Email cannot be sent.")
+        print("ERROR: EMAIL_SENDER not configured in .env file")
+        return False
+        
+    if not EMAIL_PASSWORD:
+        logging.error("EMAIL_PASSWORD not found in environment variables. Email cannot be sent.")
+        print("ERROR: EMAIL_PASSWORD not configured in .env file")
+        return False
     
     try:
         # Create the email
@@ -231,6 +241,8 @@ def send_email_summary(summary, sheet_url):
         msg['From'] = EMAIL_SENDER
         msg['To'] = EMAIL_RECIPIENT
         msg['Subject'] = f"Partial Payments Summary - {datetime.datetime.now().strftime('%Y-%m-%d')}"
+        
+        logging.info(f"Preparing email from {EMAIL_SENDER} to {EMAIL_RECIPIENT}")
         
         # Email body
         body = f"""
@@ -270,23 +282,143 @@ def send_email_summary(summary, sheet_url):
         """
         
         msg.attach(MIMEText(body, 'html'))
+        logging.info("Email content prepared successfully")
         
         # Connect to Gmail SMTP server
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        logging.info("Connecting to Gmail SMTP server...")
+        try:
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.set_debuglevel(1)  # Add debug level for more detailed SMTP logs
+            logging.info("SMTP connection established")
+            
+            server.ehlo()  # SMTP protocol start
+            logging.info("EHLO command sent")
+            
+            server.starttls()
+            logging.info("STARTTLS command sent")
+            
+            server.ehlo()  # SMTP protocol restart after TLS
+            logging.info("Second EHLO command sent")
+            
+            # Log authentication attempt (without showing the password)
+            logging.info(f"Attempting to login with account: {EMAIL_SENDER}")
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            logging.info("SMTP authentication successful")
+            
+            # Send the email
+            logging.info("Sending email message...")
+            server.send_message(msg)
+            logging.info("Email sent successfully")
+            
+            server.quit()
+            logging.info("SMTP connection closed")
+            print(f"Email summary successfully sent to {EMAIL_RECIPIENT}")
+            return True
         
-        # Send the email
-        server.send_message(msg)
-        server.quit()
+        except smtplib.SMTPAuthenticationError as auth_error:
+            logging.error(f"SMTP Authentication Error: {auth_error}")
+            print(f"ERROR: Email authentication failed. If using Gmail, make sure you're using an App Password, not your regular password.")
+            return False
         
-        logging.info(f"Email summary sent to {EMAIL_RECIPIENT}")
+        except smtplib.SMTPException as smtp_error:
+            logging.error(f"SMTP Error: {smtp_error}")
+            print(f"ERROR: SMTP error occurred: {smtp_error}")
+            return False
     
     except Exception as e:
         logging.error(f"Error sending email: {str(e)}")
-        print(f"Error sending email: {str(e)}")
+        print(f"ERROR: Failed to send email: {str(e)}")
+        return False
+
+def test_email_connection():
+    """Test email connection and authentication"""
+    logging.info("Testing email connection...")
+    
+    # Check for email credentials
+    if not EMAIL_SENDER:
+        logging.error("EMAIL_SENDER not found in environment variables. Email cannot be sent.")
+        print("ERROR: EMAIL_SENDER not configured in .env file")
+        return False
+        
+    if not EMAIL_PASSWORD:
+        logging.error("EMAIL_PASSWORD not found in environment variables. Email cannot be sent.")
+        print("ERROR: EMAIL_PASSWORD not configured in .env file")
+        return False
+    
+    try:
+        # Connect to Gmail SMTP server
+        print("Connecting to Gmail SMTP server...")
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.set_debuglevel(1)  # Add debug level for more detailed SMTP logs
+        print("SMTP connection established")
+        
+        server.ehlo()  # SMTP protocol start
+        print("EHLO command sent")
+        
+        server.starttls()
+        print("STARTTLS command sent")
+        
+        server.ehlo()  # SMTP protocol restart after TLS
+        print("Second EHLO command sent")
+        
+        # Log authentication attempt (without showing the password)
+        print(f"Attempting to login with account: {EMAIL_SENDER}")
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        print("SMTP authentication successful")
+        
+        # Send a test email
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = EMAIL_RECIPIENT
+        msg['Subject'] = f"Test Email - Razorpay Payment Links Tracker"
+        
+        body = """
+        <html>
+        <body>
+            <h2>Email Test Successful</h2>
+            <p>This is a test email from the Razorpay Payment Links Tracker.</p>
+            <p>If you're receiving this, email functionality is working correctly.</p>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        print("Sending test email...")
+        server.send_message(msg)
+        print("Test email sent successfully")
+        
+        server.quit()
+        print("SMTP connection closed")
+        
+        print(f"\nSUCCESS: Test email sent to {EMAIL_RECIPIENT}")
+        return True
+        
+    except smtplib.SMTPAuthenticationError as auth_error:
+        logging.error(f"SMTP Authentication Error: {auth_error}")
+        print(f"ERROR: Email authentication failed. If using Gmail, make sure you're using an App Password, not your regular password.")
+        return False
+    
+    except smtplib.SMTPException as smtp_error:
+        logging.error(f"SMTP Error: {smtp_error}")
+        print(f"ERROR: SMTP error occurred: {smtp_error}")
+        return False
+    
+    except Exception as e:
+        logging.error(f"Error testing email: {str(e)}")
+        print(f"ERROR: Failed to test email: {str(e)}")
+        return False
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Extract partial payments from Google Sheet')
+    parser.add_argument('--test-email', action='store_true', help='Test email functionality only')
+    args = parser.parse_args()
+    
+    # If test-email flag is provided, only test email functionality
+    if args.test_email:
+        return 0 if test_email_connection() else 1
+    
     try:
         # Connect to Google Sheet
         spreadsheet = connect_to_sheet()
@@ -306,7 +438,7 @@ def main():
             sheet_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}"
             
             # Send email summary
-            send_email_summary(summary, sheet_url)
+            email_sent = send_email_summary(summary, sheet_url)
             
             # Export to CSV (optional)
             partial_payments.to_csv(OUTPUT_FILE, index=False)
@@ -326,7 +458,10 @@ def main():
             print(partial_payments.head(5).to_string())
             
             print(f"\nFull details exported to Google Sheet tab 'Partial Payments'")
-            print(f"Email summary sent to {EMAIL_RECIPIENT}")
+            if email_sent:
+                print(f"Email summary sent to {EMAIL_RECIPIENT}")
+            else:
+                print(f"WARNING: Email summary could not be sent to {EMAIL_RECIPIENT}. Check logs for details.")
         else:
             print("No partial payments with status 'created' found.")
         

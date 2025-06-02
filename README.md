@@ -89,6 +89,25 @@ EMAIL_PASSWORD=your_app_password
 
 For Gmail, you need to use an App Password, not your regular password. Create one at: https://myaccount.google.com/apppasswords
 
+### Troubleshooting Email Issues
+
+If you're having trouble with email sending, you can test the email functionality separately:
+
+```bash
+python extract_partial_payments.py --test-email
+```
+
+This will:
+1. Test the connection to the Gmail SMTP server
+2. Verify your email credentials
+3. Send a test email to the configured recipient
+4. Show detailed logs of the email sending process
+
+Common issues:
+- **Authentication errors**: Make sure you're using an App Password for Gmail, not your regular password
+- **Security settings**: Check that your Gmail account allows "less secure apps" or use App Passwords
+- **Environment variables**: Verify that EMAIL_SENDER and EMAIL_PASSWORD are correctly set in your .env file
+
 ### Output Example
 
 ```
