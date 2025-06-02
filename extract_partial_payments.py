@@ -255,22 +255,22 @@ def send_email_summary(summary, sheet_url):
                 <tr>
                     <td><b>Category</b></td>
                     <td><b>Count</b></td>
-                    <td><b>Amount Due (₹)</b></td>
+                    <td><b>Amount Due (Rs.)</b></td>
                 </tr>
                 <tr>
                     <td>July Reference IDs</td>
                     <td>{summary['july_count']}</td>
-                    <td>₹{summary['july_due']:,.2f}</td>
+                    <td>Rs. {summary['july_due']:,.2f}</td>
                 </tr>
                 <tr>
                     <td>Other Reference IDs</td>
                     <td>{summary['other_count']}</td>
-                    <td>₹{summary['other_due']:,.2f}</td>
+                    <td>Rs. {summary['other_due']:,.2f}</td>
                 </tr>
                 <tr>
                     <td><b>Total</b></td>
                     <td><b>{summary['july_count'] + summary['other_count']}</b></td>
-                    <td><b>₹{summary['total_due']:,.2f}</b></td>
+                    <td><b>Rs. {summary['total_due']:,.2f}</b></td>
                 </tr>
             </table>
             
@@ -281,7 +281,8 @@ def send_email_summary(summary, sheet_url):
         </html>
         """
         
-        msg.attach(MIMEText(body, 'html'))
+        # Use UTF-8 encoding for the email body
+        msg.attach(MIMEText(body, 'html', 'utf-8'))
         logging.info("Email content prepared successfully")
         
         # Connect to Gmail SMTP server
@@ -370,7 +371,7 @@ def test_email_connection():
         msg = MIMEMultipart()
         msg['From'] = EMAIL_SENDER
         msg['To'] = EMAIL_RECIPIENT
-        msg['Subject'] = f"Test Email - Razorpay Payment Links Tracker"
+        msg['Subject'] = "Test Email - Razorpay Payment Links Tracker"
         
         body = """
         <html>
@@ -382,7 +383,7 @@ def test_email_connection():
         </html>
         """
         
-        msg.attach(MIMEText(body, 'html'))
+        msg.attach(MIMEText(body, 'html', 'utf-8'))
         
         print("Sending test email...")
         server.send_message(msg)
