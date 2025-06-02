@@ -224,15 +224,38 @@ def send_email_summary(summary, sheet_url):
     """Send email with summary of partial payments"""
     logging.info("Attempting to send email summary...")
     
+    # Check if .env file exists
+    if not os.path.exists('.env'):
+        logging.error("No .env file found. Please create one based on env.example.")
+        print("ERROR: No .env file found. Please create one based on env.example.")
+        return False
+    
     # Check for email credentials
-    if not EMAIL_SENDER:
-        logging.error("EMAIL_SENDER not found in environment variables. Email cannot be sent.")
+    if not EMAIL_SENDER or EMAIL_SENDER == '':
+        logging.error("EMAIL_SENDER not found or empty in environment variables. Email cannot be sent.")
         print("ERROR: EMAIL_SENDER not configured in .env file")
+        print("Please add the following to your .env file:")
+        print("EMAIL_SENDER=your_email@gmail.com")
+        print("EMAIL_PASSWORD=your_app_password")
         return False
         
-    if not EMAIL_PASSWORD:
-        logging.error("EMAIL_PASSWORD not found in environment variables. Email cannot be sent.")
+    if not EMAIL_PASSWORD or EMAIL_PASSWORD == '':
+        logging.error("EMAIL_PASSWORD not found or empty in environment variables. Email cannot be sent.")
         print("ERROR: EMAIL_PASSWORD not configured in .env file")
+        print("Please add the following to your .env file:")
+        print("EMAIL_SENDER=your_email@gmail.com")
+        print("EMAIL_PASSWORD=your_app_password")
+        return False
+    
+    # Check for non-ASCII characters in email credentials
+    if any(ord(c) > 127 for c in EMAIL_SENDER):
+        logging.error("EMAIL_SENDER contains non-ASCII characters. This can cause encoding issues.")
+        print("ERROR: EMAIL_SENDER contains non-ASCII characters. Please remove any special characters.")
+        return False
+    
+    if any(ord(c) > 127 for c in EMAIL_PASSWORD):
+        logging.error("EMAIL_PASSWORD contains non-ASCII characters. This can cause encoding issues.")
+        print("ERROR: EMAIL_PASSWORD contains non-ASCII characters. Please use only ASCII characters.")
         return False
     
     try:
@@ -335,15 +358,38 @@ def test_email_connection():
     """Test email connection and authentication"""
     logging.info("Testing email connection...")
     
+    # Check if .env file exists
+    if not os.path.exists('.env'):
+        logging.error("No .env file found. Please create one based on env.example.")
+        print("ERROR: No .env file found. Please create one based on env.example.")
+        return False
+    
     # Check for email credentials
-    if not EMAIL_SENDER:
-        logging.error("EMAIL_SENDER not found in environment variables. Email cannot be sent.")
+    if not EMAIL_SENDER or EMAIL_SENDER == '':
+        logging.error("EMAIL_SENDER not found or empty in environment variables. Email cannot be sent.")
         print("ERROR: EMAIL_SENDER not configured in .env file")
+        print("Please add the following to your .env file:")
+        print("EMAIL_SENDER=your_email@gmail.com")
+        print("EMAIL_PASSWORD=your_app_password")
         return False
         
-    if not EMAIL_PASSWORD:
-        logging.error("EMAIL_PASSWORD not found in environment variables. Email cannot be sent.")
+    if not EMAIL_PASSWORD or EMAIL_PASSWORD == '':
+        logging.error("EMAIL_PASSWORD not found or empty in environment variables. Email cannot be sent.")
         print("ERROR: EMAIL_PASSWORD not configured in .env file")
+        print("Please add the following to your .env file:")
+        print("EMAIL_SENDER=your_email@gmail.com")
+        print("EMAIL_PASSWORD=your_app_password")
+        return False
+    
+    # Check for non-ASCII characters in email credentials
+    if any(ord(c) > 127 for c in EMAIL_SENDER):
+        logging.error("EMAIL_SENDER contains non-ASCII characters. This can cause encoding issues.")
+        print("ERROR: EMAIL_SENDER contains non-ASCII characters. Please remove any special characters.")
+        return False
+    
+    if any(ord(c) > 127 for c in EMAIL_PASSWORD):
+        logging.error("EMAIL_PASSWORD contains non-ASCII characters. This can cause encoding issues.")
+        print("ERROR: EMAIL_PASSWORD contains non-ASCII characters. Please use only ASCII characters.")
         return False
     
     try:
