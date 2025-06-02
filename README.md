@@ -45,6 +45,49 @@ The application extracts and exports the following fields from each payment link
 25. **Payments Details** - Summary of all payments (IDs, amounts, methods, statuses)
 26. **Notes** - Any notes attached to the payment link
 
+## Extract Partial Payments
+
+The `extract_partial_payments.py` script allows you to identify payment links where the amount paid is less than the total amount (partially paid or unpaid links).
+
+### Features
+
+- Reads data directly from the Google Sheet
+- Identifies all payment links where amount paid < total amount
+- Calculates the due amount for each payment link
+- Sorts results by due amount (highest to lowest)
+- Exports results to a CSV file
+- Displays a summary of the top 5 partial payments
+
+### Usage
+
+```bash
+python extract_partial_payments.py
+```
+
+The script will:
+1. Connect to the Google Sheet using the service account credentials
+2. Extract all payment links with partial payments
+3. Display a summary of the results
+4. Export the full list to `partial_payments.csv`
+
+### Output Example
+
+```
+Partial Payments Summary:
+Total partial payments: 61
+Total due amount: ₹5404500.00
+
+Top 5 partial payments (by due amount):
+                       ID  Amount (₹)  Amount Paid (₹)  Due Amount (₹)          Status                    Short URL Reference ID            Customer Email Customer Contact
+23   plink_Q9QVmdEdAIiL16      210000                0          210000       cancelled  https://rzp.io/rzp/pjGgvsPU         T142     utturemalli@gmail.com       8879582777
+129  plink_PYtxQY2VIraRGm      250000            50000          200000  partially_paid  https://rzp.io/rzp/ts3gBcVm       T53-54  rupali.patil48@gmail.com       9423590129
+142  plink_PX5JIs1w0OAlNA      160000                0          160000       cancelled   https://rzp.io/rzp/cE9UfSr          T40      vijayoak30@gmail.com       9850199340
+36   plink_Q3neODhnEhHdss      159000                0          159000         created   https://rzp.io/rzp/ZTYh45M           F1  jayanthanmohan@gmail.com       9500848488
+54   plink_PuQDR0reuUhul6      155000                0          155000       cancelled   https://rzp.io/rzp/tOVjM9K         T119  asthanagar1679@gmail.com       9827304643
+
+Full details exported to partial_payments.csv
+```
+
 ## Setup
 
 ### Prerequisites
