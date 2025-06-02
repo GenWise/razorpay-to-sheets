@@ -47,16 +47,22 @@ The application extracts and exports the following fields from each payment link
 
 ## Extract Partial Payments
 
-The `extract_partial_payments.py` script allows you to identify payment links where the amount paid is less than the total amount (partially paid or unpaid links).
+The `extract_partial_payments.py` script allows you to identify payment links where:
+1. The amount paid is less than the total amount
+2. The status is "created" (active links awaiting payment)
 
 ### Features
 
 - Reads data directly from the Google Sheet
-- Identifies all payment links where amount paid < total amount
+- Identifies payment links with status "created" where amount paid < total amount
 - Calculates the due amount for each payment link
 - Sorts results by due amount (highest to lowest)
-- Exports results to a CSV file
-- Displays a summary of the top 5 partial payments
+- Creates/updates a "Partial Payments" tab in the same Google Sheet
+- Sends an email summary to the specified recipient with:
+  - Total due amount
+  - Due amount split by Reference IDs starting with "July" vs others
+  - Link to the Google Sheet
+- Exports results to a CSV file (optional)
 
 ### Usage
 
@@ -66,26 +72,42 @@ python extract_partial_payments.py
 
 The script will:
 1. Connect to the Google Sheet using the service account credentials
-2. Extract all payment links with partial payments
-3. Display a summary of the results
-4. Export the full list to `partial_payments.csv`
+2. Extract all payment links with status "created" and partial payments
+3. Create or update a "Partial Payments" tab in the same Google Sheet
+4. Send an email summary to the configured recipient
+5. Display a summary of the results
+6. Export the full list to `partial_payments.csv`
+
+### Email Configuration
+
+To enable email functionality, add the following to your `.env` file:
+
+```
+EMAIL_SENDER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+```
+
+For Gmail, you need to use an App Password, not your regular password. Create one at: https://myaccount.google.com/apppasswords
 
 ### Output Example
 
 ```
 Partial Payments Summary:
-Total partial payments: 61
-Total due amount: ₹5404500.00
+Total partial payments: 15
+Total due amount: ₹1,245,000.00
+July references: 5 items, ₹425,000.00
+Other references: 10 items, ₹820,000.00
 
 Top 5 partial payments (by due amount):
-                       ID  Amount (₹)  Amount Paid (₹)  Due Amount (₹)          Status                    Short URL Reference ID            Customer Email Customer Contact
-23   plink_Q9QVmdEdAIiL16      210000                0          210000       cancelled  https://rzp.io/rzp/pjGgvsPU         T142     utturemalli@gmail.com       8879582777
-129  plink_PYtxQY2VIraRGm      250000            50000          200000  partially_paid  https://rzp.io/rzp/ts3gBcVm       T53-54  rupali.patil48@gmail.com       9423590129
-142  plink_PX5JIs1w0OAlNA      160000                0          160000       cancelled   https://rzp.io/rzp/cE9UfSr          T40      vijayoak30@gmail.com       9850199340
-36   plink_Q3neODhnEhHdss      159000                0          159000         created   https://rzp.io/rzp/ZTYh45M           F1  jayanthanmohan@gmail.com       9500848488
-54   plink_PuQDR0reuUhul6      155000                0          155000       cancelled   https://rzp.io/rzp/tOVjM9K         T119  asthanagar1679@gmail.com       9827304643
+                       ID  Amount (₹)  Amount Paid (₹)  Due Amount (₹)    Status                    Short URL Reference ID            Customer Email Customer Contact
+23   plink_Q9QVmdEdAIiL16      210000                0          210000   created  https://rzp.io/rzp/pjGgvsPU         T142     utturemalli@gmail.com       8879582777
+36   plink_Q3neODhnEhHdss      159000                0          159000   created   https://rzp.io/rzp/ZTYh45M           F1  jayanthanmohan@gmail.com       9500848488
+48   plink_PuXDR0reuUhul6      155000                0          155000   created   https://rzp.io/rzp/tOVjM9K         T119  asthanagar1679@gmail.com       9827304643
+52   plink_PZ5xQY2VIraRGm      120000            20000          100000   created  https://rzp.io/rzp/ts3gBcVm       July-T1  rupali.patil48@gmail.com       9423590129
+61   plink_Q1nODhnEhHdss       95000                0           95000   created   https://rzp.io/rzp/ZTYh45M        July-F2  customer@example.com          9876543210
 
-Full details exported to partial_payments.csv
+Full details exported to Google Sheet tab 'Partial Payments'
+Email summary sent to rajesh@genwise.in
 ```
 
 ## Setup
