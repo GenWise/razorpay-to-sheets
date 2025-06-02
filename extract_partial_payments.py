@@ -90,6 +90,7 @@ def extract_partial_payments(worksheet):
         amount_col = "Amount (₹)"
         paid_col = "Amount Paid (₹)"
         status_col = "Status"
+        currency_col = "Currency"
         
         # Find the actual column names if they don't match exactly
         if amount_col not in df.columns:
@@ -113,6 +114,13 @@ def extract_partial_payments(worksheet):
                     status_col = col
                     break
         
+        if currency_col not in df.columns:
+            # Try to find similar column names
+            for col in df.columns:
+                if "currency" in col.lower():
+                    currency_col = col
+                    break
+        
         # Check if we found the columns
         required_cols = [amount_col, paid_col, status_col]
         missing_cols = [col for col in required_cols if col not in df.columns]
@@ -132,6 +140,11 @@ def extract_partial_payments(worksheet):
         due_col = "Due Amount (₹)"
         partial_payments[due_col] = partial_payments[amount_col] - partial_payments[paid_col]
         
+        # If currency column doesn't exist, add a default one
+        if currency_col not in partial_payments.columns:
+            partial_payments[currency_col] = "INR"
+            currency_col = "Currency"  # Ensure we use the standard name
+        
         # Sort by due amount (highest to lowest)
         partial_payments = partial_payments.sort_values(by=due_col, ascending=False)
         
@@ -139,7 +152,7 @@ def extract_partial_payments(worksheet):
         
         # Select relevant columns
         columns_to_export = [
-            "ID", amount_col, paid_col, due_col, 
+            "ID", amount_col, paid_col, due_col, currency_col,
             status_col, "Short URL", "Reference ID", "Customer Email", "Customer Contact"
         ]
         
@@ -182,7 +195,7 @@ def create_or_update_sheet_tab(spreadsheet, data, tab_name="Partial Payments"):
         raise
 
 def generate_summary(data):
-    """Generate summary of total amount due, split by Reference ID's starting with 'July' and the rest"""
+    """Generate summary of total amount due, split by Reference ID's starting with 'July' and the rest, and by currency"""
     # Check if Reference ID column exists
     ref_id_col = "Reference ID"
     if ref_id_col not in data.columns:
@@ -192,16 +205,56 @@ def generate_summary(data):
                 ref_id_col = col
                 break
     
-    # If we still don't have a Reference ID column, return a simple summary
+    # Check if Currency column exists
+    currency_col = "Currency"
+    if currency_col not in data.columns:
+        # Try to find a similar column
+        for col in data.columns:
+            if "currency" in col.lower():
+                currency_col = col
+                break
+    
+    # If currency column doesn't exist, assume all are INR
+    has_currency = currency_col in data.columns
+    
+    # Create a summary dictionary
+    summary = {
+        "total": {"count": 0, "amount": 0},
+        "july": {"count": 0, "amount": 0},
+        "other": {"count": 0, "amount": 0},
+        "by_currency": {}
+    }
+    
+    # If we don't have a Reference ID column, return a simple summary
     if ref_id_col not in data.columns:
         total_due = data["Due Amount (₹)"].sum()
-        return {
-            "total_due": total_due,
-            "july_due": 0,
-            "other_due": total_due,
-            "july_count": 0,
-            "other_count": len(data)
-        }
+        summary["total"]["count"] = len(data)
+        summary["total"]["amount"] = total_due
+        summary["other"]["count"] = len(data)
+        summary["other"]["amount"] = total_due
+        
+        # Add currency breakdown if available
+        if has_currency:
+            for currency, group in data.groupby(currency_col):
+                if currency not in summary["by_currency"]:
+                    summary["by_currency"][currency] = {
+                        "total": {"count": 0, "amount": 0},
+                        "july": {"count": 0, "amount": 0},
+                        "other": {"count": 0, "amount": 0}
+                    }
+                summary["by_currency"][currency]["total"]["count"] = len(group)
+                summary["by_currency"][currency]["total"]["amount"] = group["Due Amount (₹)"].sum()
+                summary["by_currency"][currency]["other"]["count"] = len(group)
+                summary["by_currency"][currency]["other"]["amount"] = group["Due Amount (₹)"].sum()
+        else:
+            # Default to INR if no currency column
+            summary["by_currency"]["INR"] = {
+                "total": {"count": len(data), "amount": total_due},
+                "july": {"count": 0, "amount": 0},
+                "other": {"count": len(data), "amount": total_due}
+            }
+        
+        return summary
     
     # Split data into July references and others
     july_data = data[data[ref_id_col].astype(str).str.startswith("July")]
@@ -212,13 +265,47 @@ def generate_summary(data):
     other_due = other_data["Due Amount (₹)"].sum() if not other_data.empty else 0
     total_due = july_due + other_due
     
-    return {
-        "total_due": total_due,
-        "july_due": july_due,
-        "other_due": other_due,
-        "july_count": len(july_data),
-        "other_count": len(other_data)
-    }
+    # Update summary
+    summary["total"]["count"] = len(data)
+    summary["total"]["amount"] = total_due
+    summary["july"]["count"] = len(july_data)
+    summary["july"]["amount"] = july_due
+    summary["other"]["count"] = len(other_data)
+    summary["other"]["amount"] = other_due
+    
+    # Add currency breakdown
+    if has_currency:
+        # Group by currency
+        for currency, group in data.groupby(currency_col):
+            if currency not in summary["by_currency"]:
+                summary["by_currency"][currency] = {
+                    "total": {"count": 0, "amount": 0},
+                    "july": {"count": 0, "amount": 0},
+                    "other": {"count": 0, "amount": 0}
+                }
+            
+            # Total for this currency
+            summary["by_currency"][currency]["total"]["count"] = len(group)
+            summary["by_currency"][currency]["total"]["amount"] = group["Due Amount (₹)"].sum()
+            
+            # July data for this currency
+            july_group = group[group[ref_id_col].astype(str).str.startswith("July")]
+            summary["by_currency"][currency]["july"]["count"] = len(july_group)
+            summary["by_currency"][currency]["july"]["amount"] = july_group["Due Amount (₹)"].sum() if not july_group.empty else 0
+            
+            # Other data for this currency
+            other_group = group[~group[ref_id_col].astype(str).str.startswith("July")]
+            summary["by_currency"][currency]["other"]["count"] = len(other_group)
+            summary["by_currency"][currency]["other"]["amount"] = other_group["Due Amount (₹)"].sum() if not other_group.empty else 0
+    else:
+        # Default to INR if no currency column
+        summary["by_currency"]["INR"] = {
+            "total": {"count": len(data), "amount": total_due},
+            "july": {"count": len(july_data), "amount": july_due},
+            "other": {"count": len(other_data), "amount": other_due}
+        }
+    
+    return summary
 
 def send_email_summary(summary, sheet_url):
     """Send email with summary of partial payments"""
@@ -274,29 +361,62 @@ def send_email_summary(summary, sheet_url):
             <h2>Partial Payments Summary</h2>
             <p>Here's a summary of payment links with status "created" and partial payments:</p>
             
+            <h3>Overall Summary</h3>
             <table border="1" cellpadding="5" cellspacing="0">
                 <tr>
                     <td><b>Category</b></td>
                     <td><b>Count</b></td>
-                    <td><b>Amount Due (Rs.)</b></td>
+                    <td><b>Amount Due</b></td>
                 </tr>
                 <tr>
                     <td>July Reference IDs</td>
-                    <td>{summary['july_count']}</td>
-                    <td>Rs. {summary['july_due']:,.2f}</td>
+                    <td>{summary['july']['count']}</td>
+                    <td>Rs. {summary['july']['amount']:,.2f}</td>
                 </tr>
                 <tr>
                     <td>Other Reference IDs</td>
-                    <td>{summary['other_count']}</td>
-                    <td>Rs. {summary['other_due']:,.2f}</td>
+                    <td>{summary['other']['count']}</td>
+                    <td>Rs. {summary['other']['amount']:,.2f}</td>
                 </tr>
                 <tr>
                     <td><b>Total</b></td>
-                    <td><b>{summary['july_count'] + summary['other_count']}</b></td>
-                    <td><b>Rs. {summary['total_due']:,.2f}</b></td>
+                    <td><b>{summary['total']['count']}</b></td>
+                    <td><b>Rs. {summary['total']['amount']:,.2f}</b></td>
                 </tr>
             </table>
             
+            <h3>Breakdown by Currency</h3>
+        """
+        
+        # Add currency breakdown tables
+        for currency, data in summary["by_currency"].items():
+            body += f"""
+            <h4>{currency}</h4>
+            <table border="1" cellpadding="5" cellspacing="0">
+                <tr>
+                    <td><b>Category</b></td>
+                    <td><b>Count</b></td>
+                    <td><b>Amount Due</b></td>
+                </tr>
+                <tr>
+                    <td>July Reference IDs</td>
+                    <td>{data['july']['count']}</td>
+                    <td>{currency} {data['july']['amount']:,.2f}</td>
+                </tr>
+                <tr>
+                    <td>Other Reference IDs</td>
+                    <td>{data['other']['count']}</td>
+                    <td>{currency} {data['other']['amount']:,.2f}</td>
+                </tr>
+                <tr>
+                    <td><b>Total</b></td>
+                    <td><b>{data['total']['count']}</b></td>
+                    <td><b>{currency} {data['total']['amount']:,.2f}</b></td>
+                </tr>
+            </table>
+            """
+        
+        body += f"""
             <p>For complete details, view the <a href="{sheet_url}">Google Sheet</a>.</p>
             
             <p>This is an automated message from the Razorpay Payment Links Tracker.</p>
@@ -494,9 +614,17 @@ def main():
             # Display summary
             print("\nPartial Payments Summary:")
             print(f"Total partial payments: {len(partial_payments)}")
-            print(f"Total due amount: ₹{summary['total_due']:,.2f}")
-            print(f"July references: {summary['july_count']} items, ₹{summary['july_due']:,.2f}")
-            print(f"Other references: {summary['other_count']} items, ₹{summary['other_due']:,.2f}")
+            print(f"Total due amount: Rs. {summary['total']['amount']:,.2f}")
+            print(f"July references: {summary['july']['count']} items, Rs. {summary['july']['amount']:,.2f}")
+            print(f"Other references: {summary['other']['count']} items, Rs. {summary['other']['amount']:,.2f}")
+            
+            # Display currency breakdown
+            print("\nBreakdown by Currency:")
+            for currency, data in summary["by_currency"].items():
+                print(f"\n{currency}:")
+                print(f"  Total: {data['total']['count']} items, {currency} {data['total']['amount']:,.2f}")
+                print(f"  July: {data['july']['count']} items, {currency} {data['july']['amount']:,.2f}")
+                print(f"  Other: {data['other']['count']} items, {currency} {data['other']['amount']:,.2f}")
             
             # Display the first 5 records
             print("\nTop 5 partial payments (by due amount):")
