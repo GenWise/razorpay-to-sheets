@@ -58,9 +58,11 @@ The `extract_partial_payments.py` script allows you to identify payment links wh
 - Calculates the due amount for each payment link
 - Sorts results by due amount (highest to lowest)
 - Creates/updates a "Partial Payments" tab in the same Google Sheet
+- Provides a breakdown of payments by currency and reference ID type
 - Sends an email summary to the specified recipient with:
   - Total due amount
   - Due amount split by Reference IDs starting with "July" vs others
+  - Breakdown by currency (INR, AED, etc.)
   - Link to the Google Sheet
 - Exports results to a CSV file (optional)
 
@@ -128,18 +130,30 @@ Common issues:
 
 ```
 Partial Payments Summary:
-Total partial payments: 15
-Total due amount: ₹1,245,000.00
-July references: 5 items, ₹425,000.00
-Other references: 10 items, ₹820,000.00
+Total partial payments: 7
+Total due amount: Rs. 253,900.00
+July references: 5 items, Rs. 24,900.00
+Other references: 2 items, Rs. 229,000.00
+
+Breakdown by Currency:
+
+AED:
+  Total: 4 items, AED 4,200.00
+  July: 4 items, AED 4,200.00
+  Other: 0 items, AED 0.00
+
+INR:
+  Total: 3 items, INR 249,700.00
+  July: 1 items, INR 20,700.00
+  Other: 2 items, INR 229,000.00
 
 Top 5 partial payments (by due amount):
-                       ID  Amount (₹)  Amount Paid (₹)  Due Amount (₹)    Status                    Short URL Reference ID            Customer Email Customer Contact
-23   plink_Q9QVmdEdAIiL16      210000                0          210000   created  https://rzp.io/rzp/pjGgvsPU         T142     utturemalli@gmail.com       8879582777
-36   plink_Q3neODhnEhHdss      159000                0          159000   created   https://rzp.io/rzp/ZTYh45M           F1  jayanthanmohan@gmail.com       9500848488
-48   plink_PuXDR0reuUhul6      155000                0          155000   created   https://rzp.io/rzp/tOVjM9K         T119  asthanagar1679@gmail.com       9827304643
-52   plink_PZ5xQY2VIraRGm      120000            20000          100000   created  https://rzp.io/rzp/ts3gBcVm       July-T1  rupali.patil48@gmail.com       9423590129
-61   plink_Q1nODhnEhHdss       95000                0           95000   created   https://rzp.io/rzp/ZTYh45M        July-F2  customer@example.com          9876543210
+                       ID  Amount (₹)  Amount Paid (₹)  Due Amount (₹) Currency   Status                    Short URL Reference ID             Customer Email Customer Contact
+36   plink_Q3neODhnEhHdss      159000                0          159000      INR  created   https://rzp.io/rzp/ZTYh45M           F1   jayanthanmohan@gmail.com       9500848488
+123  plink_PYxkvmzfPM8b6W       70000                0           70000      INR  created  https://rzp.io/rzp/Ilniud0k        T60S3  monajaisinghani@gmail.com       9891183507
+9    plink_QbmfxDOcH1Jerr       20700                0           20700      INR  created  https://rzp.io/rzp/jCrJPLnK     July-003    veeravictoria@gmail.com     971501603843
+8    plink_QbmsLkeHHw1hQQ        1500                0            1500      AED  created  https://rzp.io/rzp/9Pwidule     July-004        rucha.oka@gmail.com
+0    plink_QcF6LHq43BkgIG         900                0             900      AED  created   https://rzp.io/rzp/3jVUYxU     July-008   rudolph.serrao@gmail.com     971526453705
 
 Full details exported to Google Sheet tab 'Partial Payments'
 Email summary sent to rajesh@genwise.in
@@ -300,4 +314,4 @@ After debugging, clean up the generated files with:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
