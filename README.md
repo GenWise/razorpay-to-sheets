@@ -87,7 +87,16 @@ EMAIL_SENDER=your_email@gmail.com
 EMAIL_PASSWORD=your_app_password
 ```
 
-For Gmail, you need to use an App Password, not your regular password. Create one at: https://myaccount.google.com/apppasswords
+For Gmail, you need to use an App Password, not your regular password:
+
+1. Go to https://myaccount.google.com/apppasswords
+2. Sign in with your Google account
+3. Select "Mail" as the app and "Other" as the device
+4. Enter a name like "Razorpay Script"
+5. Click "Generate" and copy the 16-character password
+6. Use this as your EMAIL_PASSWORD
+
+**Important**: Make sure both your email address and password contain only ASCII characters (no special characters or Unicode). Non-ASCII characters can cause encoding issues when sending emails.
 
 ### Troubleshooting Email Issues
 
@@ -104,9 +113,16 @@ This will:
 4. Show detailed logs of the email sending process
 
 Common issues:
-- **Authentication errors**: Make sure you're using an App Password for Gmail, not your regular password
-- **Security settings**: Check that your Gmail account allows "less secure apps" or use App Passwords
-- **Environment variables**: Verify that EMAIL_SENDER and EMAIL_PASSWORD are correctly set in your .env file
+
+1. **Non-ASCII characters**: If you see an error like `'ascii' codec can't encode character`, check your email and password for special characters and replace them.
+
+2. **Authentication errors**: Make sure you're using an App Password for Gmail, not your regular password. Regular passwords won't work if you have 2-factor authentication enabled.
+
+3. **Security settings**: If you're not using an App Password, you may need to enable "Less secure app access" in your Google account settings.
+
+4. **Environment variables**: Verify that EMAIL_SENDER and EMAIL_PASSWORD are correctly set in your .env file and don't contain any whitespace or special characters.
+
+5. **Gmail limits**: Gmail has sending limits. If you're sending too many emails, you might hit these limits.
 
 ### Output Example
 
