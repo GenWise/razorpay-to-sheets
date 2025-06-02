@@ -76,31 +76,52 @@ def extract_partial_payments(worksheet):
         df = pd.DataFrame(data)
         
         # Check if the required columns exist
-        required_columns = ["ID", "Amount (₹)", "Amount Paid (₹)", "Status", "Short URL"]
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        amount_col = "Amount (₹)"
+        paid_col = "Amount Paid (₹)"
         
-        if missing_columns:
-            raise ValueError(f"Missing required columns in Google Sheet: {', '.join(missing_columns)}")
+        # Find the actual column names if they don't match exactly
+        if amount_col not in df.columns:
+            # Try to find similar column names
+            for col in df.columns:
+                if "amount" in col.lower() and "paid" not in col.lower():
+                    amount_col = col
+                    break
+        
+        if paid_col not in df.columns:
+            # Try to find similar column names
+            for col in df.columns:
+                if "amount" in col.lower() and "paid" in col.lower():
+                    paid_col = col
+                    break
+        
+        # Check if we found the columns
+        if amount_col not in df.columns or paid_col not in df.columns:
+            raise ValueError(f"Could not find amount columns in the sheet. Available columns: {', '.join(df.columns)}")
+        
+        # Convert amount columns to float
+        df[amount_col] = pd.to_numeric(df[amount_col], errors='coerce')
+        df[paid_col] = pd.to_numeric(df[paid_col], errors='coerce')
         
         # Filter for records where amount paid is less than total amount
-        partial_payments = df[df["Amount Paid (₹)"] < df["Amount (₹)"]]
+        partial_payments = df[df[paid_col] < df[amount_col]].copy()
         
         # Add a Due Amount column
-        partial_payments["Due Amount (₹)"] = partial_payments["Amount (₹)"] - partial_payments["Amount Paid (₹)"]
+        due_col = "Due Amount (₹)"
+        partial_payments[due_col] = partial_payments[amount_col] - partial_payments[paid_col]
         
         # Sort by due amount (highest to lowest)
-        partial_payments = partial_payments.sort_values(by="Due Amount (₹)", ascending=False)
+        partial_payments = partial_payments.sort_values(by=due_col, ascending=False)
         
         logging.info(f"Found {len(partial_payments)} payment links with partial payments")
         
         # Select relevant columns
         columns_to_export = [
-            "ID", "Amount (₹)", "Amount Paid (₹)", "Due Amount (₹)", 
+            "ID", amount_col, paid_col, due_col, 
             "Status", "Short URL", "Reference ID", "Customer Email", "Customer Contact"
         ]
         
         # Filter columns that exist in the DataFrame
-        available_columns = [col for col in columns_to_export if col in df.columns]
+        available_columns = [col for col in columns_to_export if col in partial_payments.columns]
         result = partial_payments[available_columns]
         
         return result
@@ -125,7 +146,12 @@ def main():
             # Display summary
             print("\nPartial Payments Summary:")
             print(f"Total partial payments: {len(partial_payments)}")
-            print(f"Total due amount: ₹{partial_payments['Due Amount (₹)'].sum():.2f}")
+            
+            # Get the due amount column name
+            due_col = "Due Amount (₹)"
+            if due_col in partial_payments.columns:
+                total_due = partial_payments[due_col].sum()
+                print(f"Total due amount: ₹{total_due:.2f}")
             
             # Display the first 5 records
             print("\nTop 5 partial payments (by due amount):")
